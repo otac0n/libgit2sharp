@@ -237,6 +237,44 @@ namespace LibGit2Sharp.Tests
             }
         }
 
+        [SkippableTheory]
+        [InlineData("https://github.com/libgit2/TestGitRepository.git", "github.com", typeof(CertificateX509))]
+        [InlineData("git@github.com/libgit2/TestGitRepository.git", "github.com", typeof(CertificateSsh))]
+        public void CanInspectCertificateOnClone(string url, string hostname, Type certType)
+        {
+            var scd = BuildSelfCleaningDirectory();
+
+            if (certType == typeof(CertificateSsh) && !GlobalSettings.Version.Features.HasFlag(BuiltInFeatures.Ssh))
+            {
+                throw new SkipException("SSH not supported");
+            }
+
+            Assert.Throws<UserCancelledException>(() => {
+                Repository.Clone(url, scd.DirectoryPath, new CloneOptions()
+                {
+                    CertificateCheck = (cert, valid, host) =>
+                    {
+                        Assert.Equal(hostname, host);
+                        Assert.Equal(certType, cert.GetType());
+                        if (certType == typeof(CertificateX509))
+                        {
+                            Assert.True(valid);
+                            var x509 = ((CertificateX509)cert).Certificate;
+                            // we get a string with the different fields instead of a structure, so...
+                            Assert.True(x509.Subject.Contains("CN=github.com,"));
+                        }
+                        else
+                        {
+                            var hostkey = (CertificateSsh)cert;
+                            Assert.True(hostkey.HasMD5);
+                            Assert.Equal("1627aca576282d36631b564debdfa648", BitConverter.ToString(hostkey.HashMD5));
+                        }
+                        return false;
+                    },
+                });
+            });
+        }
+
         [Fact]
         public void CloningAnUrlWithoutPathThrows()
         {
