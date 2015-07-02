@@ -262,9 +262,9 @@ namespace LibGit2Sharp.Tests
 
                 List<ObjectId> expectedTreeIds = new List<ObjectId>()
                 {
-                    new ObjectId("447bad85bcc1882037848370620a6f88e8ee264e"),
-                    new ObjectId("3b0fc846952496a64b6149064cde21215daca8f8"),
-                    new ObjectId("a2d114246012daf3ef8e7ccbfbe91889a24e1e60"),
+                    new ObjectId("2cad6e96a0028f1764dcbde6292a9a1471acb114"),
+                    new ObjectId("18fd3deebe6124b5dacc8426d589d617a968e8d1"),
+                    new ObjectId("048977d8cb90d530e83cc615a17a49f3068f68c1"),
                 };
 
                 List<Commit> rebasedCommits = repo.Commits.QueryBy(commitFilter).ToList();
@@ -602,7 +602,7 @@ namespace LibGit2Sharp.Tests
 
                 repo.Checkout(topicBranch1Name);
 
-                 Branch topicBranch1Prime = repo.CreateBranch(topicBranch1PrimeName, masterBranch1Name);
+                Branch topicBranch1Prime = repo.CreateBranch(topicBranch1PrimeName, masterBranch1Name);
 
                 string newFileRelativePath = "new_file.txt";
                 Touch(repo.Info.WorkingDirectory, newFileRelativePath, "New Content");
@@ -631,7 +631,7 @@ namespace LibGit2Sharp.Tests
                 };
 
                 repo.Rebase.Start(null, upstreamBranch, null, Constants.Identity2, options);
-                ObjectId secondCommitExpectedTreeId = new ObjectId("ac04bf04980c9be72f64ba77fd0d9088a40ed681");
+                ObjectId secondCommitExpectedTreeId = new ObjectId("379e80ed7824be7672e1e30ddd8f44aa081d57d4");
                 Signature secondCommitAuthorSignature = Constants.Signature;
                 Identity secondCommitCommiterIdentity = Constants.Identity2;
 
@@ -699,6 +699,11 @@ namespace LibGit2Sharp.Tests
 
             string workdir = repo.Info.WorkingDirectory;
             Commit commit = null;
+
+            CreateAttributesFile(repo, "* text=auto");
+
+            repo.Stage(".gitattributes");
+            commit = repo.Commit("setup", Constants.Signature, Constants.Signature, new CommitOptions());
 
             Touch(workdir, filePathA, fileContentA1);
             repo.Stage(filePathA);
