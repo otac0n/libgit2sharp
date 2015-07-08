@@ -190,15 +190,18 @@ namespace LibGit2Sharp.Tests
         /// <summary>
         /// Verify a single rebase, but in more detail.
         /// </summary>
-        [Fact]
-        public void VerifyRebaseDetailed()
+        [Theory]
+        [InlineData("* text=auto", new[] { "2cad6e96a0028f1764dcbde6292a9a1471acb114", "18fd3deebe6124b5dacc8426d589d617a968e8d1", "048977d8cb90d530e83cc615a17a49f3068f68c1" })]
+        [InlineData("* text=lf", new[] { "4f813f70525a6ba4ea414a54ad89412b8d9f25aa", "6a2261c0739058ac987f1fa0014946753161b167", "6aa53c88fc1e739678749dff5acf4b00799b5c4d" })]
+        [InlineData("* text=crlf", new[] { "28e48a7c129e1025d0233cb5a92425f12f55070b", "d737950e62ec31a25afc34b06075e144b3d2be31", "bf4ed0456e4a2cc42a8746191501d8521cfad6a8" })]
+        public void VerifyRebaseDetailed(string attributes, string[] expectedIds)
         {
             SelfCleaningDirectory scd = BuildSelfCleaningDirectory();
             var path = Repository.Init(scd.DirectoryPath);
 
             using (Repository repo = new Repository(path))
             {
-                ConstructRebaseTestRepository(repo);
+                ConstructRebaseTestRepository(repo, attributes);
 
                 Branch initialBranch = repo.Branches[topicBranch1Name];
                 Branch upstreamBranch = repo.Branches[masterBranch2Name];
@@ -262,9 +265,9 @@ namespace LibGit2Sharp.Tests
 
                 List<ObjectId> expectedTreeIds = new List<ObjectId>()
                 {
-                    new ObjectId("2cad6e96a0028f1764dcbde6292a9a1471acb114"),
-                    new ObjectId("18fd3deebe6124b5dacc8426d589d617a968e8d1"),
-                    new ObjectId("048977d8cb90d530e83cc615a17a49f3068f68c1"),
+                    new ObjectId(expectedIds[0]),
+                    new ObjectId(expectedIds[1]),
+                    new ObjectId(expectedIds[2]),
                 };
 
                 List<Commit> rebasedCommits = repo.Commits.QueryBy(commitFilter).ToList();
@@ -591,14 +594,17 @@ namespace LibGit2Sharp.Tests
             }
         }
 
-        [Fact]
-        public void CanRebaseHandlePatchAlreadyApplied()
+        [Theory]
+        [InlineData("* text=auto", "379e80ed7824be7672e1e30ddd8f44aa081d57d4")]
+        [InlineData("* text=lf", "d43f4f2cb680ea446aef98f650a391224b18d171")]
+        [InlineData("* text=crlf", "62b1e8ddefb3a083f3c6bbda138271b878c59459")]
+        public void CanRebaseHandlePatchAlreadyApplied(string attributes, string expectedShaText)
         {
             SelfCleaningDirectory scd = BuildSelfCleaningDirectory();
             var path = Repository.Init(scd.DirectoryPath);
             using (Repository repo = new Repository(path))
             {
-                ConstructRebaseTestRepository(repo);
+                ConstructRebaseTestRepository(repo, attributes);
 
                 repo.Checkout(topicBranch1Name);
 
@@ -631,7 +637,7 @@ namespace LibGit2Sharp.Tests
                 };
 
                 repo.Rebase.Start(null, upstreamBranch, null, Constants.Identity2, options);
-                ObjectId secondCommitExpectedTreeId = new ObjectId("379e80ed7824be7672e1e30ddd8f44aa081d57d4");
+                ObjectId secondCommitExpectedTreeId = new ObjectId(expectedShaText);
                 Signature secondCommitAuthorSignature = Constants.Signature;
                 Identity secondCommitCommiterIdentity = Constants.Identity2;
 
@@ -642,7 +648,7 @@ namespace LibGit2Sharp.Tests
                 Assert.NotNull(rebaseResults[1].Commit);
 
                 // This is the expected tree ID of the new commit.
-                Assert.True(ObjectId.Equals(secondCommitExpectedTreeId, rebaseResults[1].Commit.Tree.Id));
+                Assert.Equal(secondCommitExpectedTreeId, rebaseResults[1].Commit.Tree.Id);
                 Assert.True(Signature.Equals(secondCommitAuthorSignature, rebaseResults[1].Commit.Author));
                 Assert.Equal<string>(secondCommitCommiterIdentity.Name, rebaseResults[1].Commit.Committer.Name, StringComparer.Ordinal);
                 Assert.Equal<string>(secondCommitCommiterIdentity.Email, rebaseResults[1].Commit.Committer.Email, StringComparer.Ordinal);
@@ -664,7 +670,7 @@ namespace LibGit2Sharp.Tests
             }
         }
 
-        private void ConstructRebaseTestRepository(Repository repo)
+        private void ConstructRebaseTestRepository(Repository repo, string attributes = "* text=auto")
         {
             // Constructs a graph that looks like:
             //                         * -- * -- *   (modifications to c.txt)
@@ -700,7 +706,7 @@ namespace LibGit2Sharp.Tests
             string workdir = repo.Info.WorkingDirectory;
             Commit commit = null;
 
-            CreateAttributesFile(repo, "* text=auto");
+            CreateAttributesFile(repo, attributes);
 
             repo.Stage(".gitattributes");
             commit = repo.Commit("setup", Constants.Signature, Constants.Signature, new CommitOptions());
